@@ -15,16 +15,27 @@ find_package(sensor_msgs REQUIRED)
 include_directories("/usr/include/eigen3")
 
 include_directories(include)
-add_executable(safety_node src/safety_node.cpp)
 
+add_executable(safety_node src/safety_node.cpp)
 ament_target_dependencies(safety_node
-    rclcpp
-    sensor_msgs
-    std_msgs
+  rclcpp
+  sensor_msgs
+  std_msgs
 )    
 
+add_executable(safety_node_test test/safety_node.cpp) 
+ament_target_dependencies(safety_node_test
+  rclcpp
+  std_msgs
+)
+
 install(
-    TARGETS safety_node
+  DIRECTORY launch/
+  DESTINATION share/${PROJECT_NAME}
+)
+
+install(
+    TARGETS safety_node safety_node_test 
     DESTINATION lib/${PROJECT_NAME}
 )
 

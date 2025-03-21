@@ -5,7 +5,7 @@ using std::placeholders::_1;
 
 namespace AEB {
 	SafetyNode::SafetyNode() : rclcpp::Node("aeb_safety_node") {
-	  enable_aeb_ = true;	
+    enable_aeb_ = true;	
 
     scan_subscription_ = this->create_subscription<sensor_msgs::msg::LaserScan>(
 			SCAN_TOPIC, 10, 
@@ -59,7 +59,8 @@ namespace AEB {
 
   void SafetyNode::ingest_throttle_cmd_raw(const std_msgs::msg::Float32::SharedPtr msg) {
     throttle_cmd_raw_ = msg->data;
-    if(enable_aeb_ == true) {
+    if(enable_aeb_){
+			RCLCPP_INFO(this->get_logger(), "AEB::CriticalThresholdDetected : trigger brake from raw cmd");
       return;
     }
 
@@ -82,10 +83,12 @@ namespace AEB {
   }
 
 	bool SafetyNode::is_within_threshold() {
+    RCLCPP_INFO(this->get_logger(), "min TTC value: %f", ttc_map_.minCoeff());
 		return ttc_map_.minCoeff() <= AEB_MIN_RADIUS; 
 	}
 
 	void SafetyNode::brake() {
+    RCLCPP_INFO(this->get_logger(), "checking if within threshold...");
 		if (is_within_threshold()) {
       enable_aeb_ = true;
 			std_msgs::msg::Float32 msg;
