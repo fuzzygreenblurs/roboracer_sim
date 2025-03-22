@@ -5,11 +5,11 @@ using std::placeholders::_1;
 
 namespace AEB {
 	SafetyNode::SafetyNode() : rclcpp::Node("aeb_safety_node") {
-    enable_aeb_ = true;	
+    enable_aeb_ = false;	
 
     scan_subscription_ = this->create_subscription<sensor_msgs::msg::LaserScan>(
 			SCAN_TOPIC, 10, 
-			std::bind(&SafetyNode::ingest_scan, this, _1)
+			std::bind(&SafetyNode::perform_aeb, this, _1)
 		);
 
  	  heading_subscription_ = this->create_subscription<sensor_msgs::msg::Imu>(
@@ -35,7 +35,10 @@ namespace AEB {
 		);
 	} 
 
-	void SafetyNode::ingest_scan(const sensor_msgs::msg::LaserScan::SharedPtr msg) {
+	//void SafetyNode::ingest_scan(const sensor_msgs::msg::LaserScan::SharedPtr msg) {
+	void SafetyNode::perform_aeb(const sensor_msgs::msg::LaserScan::SharedPtr msg) {
+    enable_aeb_ = false;
+
 		Eigen::Map<const Eigen::VectorXf> ranges(
 			msg->ranges.data(),
 			msg->ranges.size()
@@ -50,6 +53,12 @@ namespace AEB {
 		Eigen::ArrayXf range_rates = speed_ * relative_angles.array().cos(); 
 		
 		ttc_map_ = ranges.array() / (-range_rates.max(0.0f) + EPSILON);
+
+    if(is_within_threshold()) {
+      enable_aeb_ = true; 
+      RCLCPP_INFO(this->get_logger(), "checking if within threshold...");
+      brake();
+    }
 	}
 
 	void SafetyNode::ingest_speed(const std_msgs::msg::Float32::SharedPtr msg) {
@@ -58,9 +67,8 @@ namespace AEB {
 	}
 
   void SafetyNode::ingest_throttle_cmd_raw(const std_msgs::msg::Float32::SharedPtr msg) {
-    throttle_cmd_raw_ = msg->data;
     if(enable_aeb_){
-			RCLCPP_INFO(this->get_logger(), "AEB::CriticalThresholdDetected : trigger brake from raw cmd");
+      RCLCPP_INFO(this->get_logger(), "AEB::CriticalThresholdDetected : trigger brake from raw cmd");
       return;
     }
 
@@ -88,20 +96,14 @@ namespace AEB {
 	}
 
 	void SafetyNode::brake() {
-    RCLCPP_INFO(this->get_logger(), "checking if within threshold...");
-		if (is_within_threshold()) {
-      enable_aeb_ = true;
-			std_msgs::msg::Float32 msg;
-      msg.data = 0.0f;
-			aeb_publisher_->publish(msg);
+    std_msgs::msg::Float32 msg;
+    msg.data = 0.0f;
+    aeb_publisher_->publish(msg);
 
-			RCLCPP_INFO(this->get_logger(), "AEB::CriticalThresholdDetected : trigger brake");
-      return; 	
-  	}
-    
-    enable_aeb_ = false;
-	}
-}
+    RCLCPP_INFO(this->get_logger(), "AEB::CriticalThresholdDetected : trigger brake");
+    return; 	
+  }
+};
 
 int main(int argc, char* argv[]) {
 	rclcpp::init(argc, argv);

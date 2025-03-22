@@ -36,7 +36,7 @@ private:
   rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr throttle_cmd_raw_subscription_;
   rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr aeb_publisher_;
 	
-  void ingest_scan(const sensor_msgs::msg::LaserScan::SharedPtr msg);
+  void perform_aeb(const sensor_msgs::msg::LaserScan::SharedPtr msg);
 	void ingest_heading(const sensor_msgs::msg::Imu::SharedPtr msg);
 	void ingest_speed(const std_msgs::msg::Float32::SharedPtr msg);
 	void ingest_throttle_cmd_raw(const std_msgs::msg::Float32::SharedPtr msg);
